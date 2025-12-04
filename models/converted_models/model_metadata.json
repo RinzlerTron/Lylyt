@@ -1,0 +1,19 @@
+{
+  "model_name": "Lylyt Simple Audio Model",
+  "input_shape": [
+    1,
+    3000,
+    80
+  ],
+  "input_type": "int8",
+  "output_shape": [
+    1,
+    1000
+  ],
+  "output_type": "int8",
+  "sample_rate": 16000,
+  "mel_bins": 80,
+  "max_audio_length": 30,
+  "vocabulary_size": 1000,
+  "description": "Simple audio classification model for Lylyt demo"
+}
