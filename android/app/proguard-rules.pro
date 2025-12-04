@@ -30,10 +30,24 @@
 -keep class org.tensorflow.** { *; }
 -keep interface org.tensorflow.** { *; }
 -keepclassmembers class org.tensorflow.** { *; }
+-dontwarn org.tensorflow.lite.gpu.**
 
 # Keep TFLite delegates for ARM optimization
 -keep class org.tensorflow.lite.gpu.** { *; }
 -keep class org.tensorflow.lite.nnapi.** { *; }
+
+# ===========================
+# llama.rn / llama.cpp
+# ===========================
+-keep class com.rnllama.** { *; }
+-keepclassmembers class com.rnllama.** { *; }
+
+# ===========================
+# JNA (used by llama.rn)
+# ===========================
+-dontwarn java.awt.**
+-dontwarn com.sun.jna.**
+-keep class com.sun.jna.** { *; }
 
 # ===========================
 # Vosk Speech Recognition

@@ -1,141 +1,28 @@
 import RNFS from 'react-native-fs';
 
-// Gemma 2B INT4 - hosted on GitHub Releases
-const MODEL_FILENAME = 'gemma-2b-it-cpu-int4.bin';
-const MODEL_URL = 'https://github.com/RinzlerTron/Lylyt/releases/download/v1.0.0/gemma-2b-it-cpu-int4.bin';
-const MODEL_SIZE_MB = 1200; // ~1.2GB
-
-export interface DownloadProgress {
-    bytesWritten: number;
-    contentLength: number;
-    percent: number;
-}
-
 class GenAIService {
-    private isDownloading: boolean = false;
-    private downloadProgress: number = 0;
-    private modelPath: string = '';
-
-    constructor() {
-        this.modelPath = `${RNFS.DocumentDirectoryPath}/${MODEL_FILENAME}`;
-    }
-
     async checkModelExists(): Promise<boolean> {
-        try {
-            const exists = await RNFS.exists(this.modelPath);
-            if (exists) {
-                const stat = await RNFS.stat(this.modelPath);
-                // Check if file is larger than 1MB (not a partial/failed download)
-                return Number(stat.size) > 1024 * 1024;
-            }
-            return false;
-        } catch (error) {
-            console.warn('GenAI: Error checking model:', error);
-            return false;
-        }
+        return true; // Always ready - no model needed
     }
 
     async getModelSizeMB(): Promise<number> {
-        try {
-            if (await this.checkModelExists()) {
-                const stat = await RNFS.stat(this.modelPath);
-                return Math.round(Number(stat.size) / (1024 * 1024));
-            }
-        } catch (error) {
-            console.warn('GenAI: Error getting model size:', error);
-        }
         return 0;
     }
 
     isDownloadingModel(): boolean {
-        return this.isDownloading;
+        return false;
     }
 
     getDownloadProgress(): number {
-        return this.downloadProgress;
+        return 100;
     }
 
     getExpectedSizeMB(): number {
-        return MODEL_SIZE_MB;
+        return 0;
     }
 
-    async downloadModel(
-        onProgress?: (progress: DownloadProgress) => void
-    ): Promise<boolean> {
-        if (this.isDownloading) {
-            console.warn('GenAI: Download already in progress');
-            return false;
-        }
-
-        this.isDownloading = true;
-        this.downloadProgress = 0;
-
-        try {
-            console.log('GenAI: Starting model download from:', MODEL_URL);
-            
-            // Delete any existing partial file
-            try {
-                if (await RNFS.exists(this.modelPath)) {
-                    await RNFS.unlink(this.modelPath);
-                }
-            } catch {}
-
-            const downloadResult = RNFS.downloadFile({
-                fromUrl: MODEL_URL,
-                toFile: this.modelPath,
-                progress: (res) => {
-                    const percent = res.contentLength > 0 
-                        ? Math.round((res.bytesWritten / res.contentLength) * 100)
-                        : 0;
-                    this.downloadProgress = percent;
-                    console.log(`GenAI: Download progress: ${percent}%`);
-                    if (onProgress) {
-                        onProgress({
-                            bytesWritten: res.bytesWritten,
-                            contentLength: res.contentLength,
-                            percent,
-                        });
-                    }
-                },
-                progressInterval: 500,
-                progressDivider: 1,
-            });
-
-            const result = await downloadResult.promise;
-            
-            console.log('GenAI: Download result:', result);
-            
-            if (result.statusCode === 200) {
-                const sizeMB = await this.getModelSizeMB();
-                console.log(`GenAI: Model downloaded successfully (${sizeMB}MB)`);
-                this.isDownloading = false;
-                return true;
-            } else {
-                throw new Error(`Download failed with status ${result.statusCode}`);
-            }
-        } catch (error: any) {
-            console.warn('GenAI: Model download failed:', error.message || error);
-            this.isDownloading = false;
-            // Clean up partial download
-            try {
-                if (await RNFS.exists(this.modelPath)) {
-                    await RNFS.unlink(this.modelPath);
-                }
-            } catch {}
-            throw error; // Re-throw so caller can show specific error
-        }
-    }
-
-    async deleteModel(): Promise<boolean> {
-        try {
-            if (await this.checkModelExists()) {
-                await RNFS.unlink(this.modelPath);
-                return true;
-            }
-        } catch (error) {
-            console.warn('GenAI: Error deleting model:', error);
-        }
-        return false;
+    async downloadModel(): Promise<boolean> {
+        return true; // No download needed
     }
 
     async summarizeConversation(transcript: string): Promise<string> {
@@ -143,14 +30,7 @@ class GenAIService {
             return "Conversation too short to summarize.";
         }
 
-        // Check if model exists
-        const modelExists = await this.checkModelExists();
-        if (!modelExists) {
-            return "MODEL_NOT_FOUND";
-        }
-
-        // With model downloaded, use extractive summarization
-        // (Full TFLite inference would require native module integration)
+        // Fast extractive summarization - 100% local, instant
         const cleanText = transcript.replace(/\s+/g, ' ').trim();
         const sentences = cleanText
             .split(/(?<=[.!?])\s+/)
@@ -161,25 +41,25 @@ class GenAIService {
             return sentences.join(' ');
         }
 
-        // Extract key sentences
+        // Extract key sentences (first, middle, last)
         const keyPoints: string[] = [];
         keyPoints.push(sentences[0]);
         
-        if (sentences.length > 2) {
+        if (sentences.length > 3) {
             const middleIdx = Math.floor(sentences.length / 2);
             keyPoints.push(sentences[middleIdx]);
         }
         
         keyPoints.push(sentences[sentences.length - 1]);
 
-        const summary = keyPoints.join(' ');
-        const wordCount = cleanText.split(/\s+/).length;
-        const summaryWordCount = summary.split(/\s+/).length;
-        
-        return `📝 Summary (${summaryWordCount} of ${wordCount} words):\n\n${summary}`;
+        return keyPoints.join(' ');
     }
 
     isReady(): boolean {
+        return true;
+    }
+
+    isModelLoaded(): boolean {
         return true;
     }
 }
